@@ -3,32 +3,35 @@ package main
 import (
 	"bufio"
 	"encoding/csv"
-	"errors"
-	"fmt"
 	"gonum.org/v1/gonum/mat"
+	"io"
 	"os"
 	"strconv"
 )
 
-type Training struct {
+type Dataset struct {
 	Data  *mat.Dense
 	Label *mat.Dense
 }
 
-type Testing struct {
-	Data  *mat.Dense
-	Label *mat.Dense
+func NewDataset(features []float64, targets []float64) *Dataset {
+	data := mat.NewDense(len(targets), len(features)/len(targets), features)
+	label := mat.NewDense(1, len(targets), targets)
+	return &Dataset{
+		Data:  data,
+		Label: label,
+	}
 }
 
-type Dataset interface {
-	readData(string) error
-}
-
-func (t *Training) readData(filename string) error {
-	if file, err := os.Open(filename); err != nil {
-		return err
+func readData(filename string, length int) ([]float64, []float64, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, nil, err
 	}
 	reader := csv.NewReader(bufio.NewReader(file))
+
+	var targets []float64
+	var features []float64
 
 	for {
 		data, err := reader.Read()
@@ -36,12 +39,19 @@ func (t *Training) readData(filename string) error {
 			break
 		}
 
+		target, err := strconv.ParseFloat(data[0], 64)
+		if err != nil {
+			return nil, nil, err
+		}
+		targets = append(targets, target)
+
 		for i := 1; i < len(data); i += 1 {
-			var features []float64
-			if res, err := strconv.Parsefloat(data[i], 64); err != nil {
-				return err
+			res, err := strconv.ParseFloat(data[i], 64)
+			if err != nil {
+				return nil, nil, err
 			}
 			features = append(features, res)
 		}
 	}
+	return features, targets, nil
 }
